@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Liste de courses collaborative</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        h2 {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        input,
+        select,
+        button {
+            padding: 6px;
+            margin: 5px 0;
+        }
+
+        button {
+            cursor: pointer;
+        }
+        
+         ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            padding: 5px;
+            margin: 5px 0;
+            background: #eee;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #foods-list li {
+            display: inline;
+            background-color: transparent;
+        }
+
+        #foods-list button {
+            box-shadow: 1px 1px 4px silver;
+            border: none;
+            padding: 10px;
+            border-radius: 40px;
+        }
+
+        #participants-popup {
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            box-shadow: 1px 1px 4px silver;
+            position: fixed;
+            z-index: 2;
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: white;
+        }
+
+        #participants-popup ul {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: white;
+            width: 100%
+        }
+
+        #participants-popup button {
+            border: none;
+            background-color: transparent;
+            width: 100%;
+        }
+
+        #participants-popup li {
+            border-bottom: 1px solid;
+            background-color: transparent;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .out-of-screen {
+            bottom: -100vh;
+        }
+
+        .show {
+            transition: bottom 300ms ease-in-out;
+            bottom: 0
+        }
+
+        .hide {
+            transition: bottom 300ms ease-in-out;
+            bottom: -100vh
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            width: 300px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .small {
+            font-size: 0.9em;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🛒 Qui prend quoi</h1>
+
+    <div class="container">
+
+        <!-- Participants -->
+        <!-- <div class="box">
+            <h2>Participants</h2>
+            <input type="text" id="participantInput" placeholder="Nom du participant">
+            <button id="addParticipantBtn">Ajouter</button>
+            <ul id="participantsList"></ul>
+        </div> -->
+
+        <!-- Aliments -->
+        <div class="box">
+            <h2>Ajouter un aliment</h2>
+            <input type="text" id="foodInput" placeholder="Nom de l'aliment">
+            <!-- <select id="participantSelect"></select> -->
+            <button id="addFoodBtn">Ajouter</button>
+            <ul id="foods-list"></ul>
+        </div>
+        
+
+        <!-- Listes de courses -->
+        <div class="box">
+            <h2>Listes de courses</h2>
+            <div id="shoppingLists"></div>
+        </div>
+
+        <div id="participants-popup" class="out-of-screen">
+            <h2>Qui prend ?</h2>
+            <ul>
+                <li><button style="color:red">Supprimer</button></li>
+            </ul>
+        </div>
+
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDc48VoXiyktOhif-LK0ms88KUijga4cmw",
+            authDomain: "listecoursenouvelan.firebaseapp.com",
+            projectId: "listecoursenouvelan",
+            storageBucket: "listecoursenouvelan.firebasestorage.app",
+            messagingSenderId: "804132489018",
+            appId: "1:804132489018:web:f1b74413408610cc0af203"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        const db = firebase.firestore();
+        let participants = [];
+        let foodsWithoutParticipant = [];
+        const participantsPopup = document.querySelector("#participants-popup");
+        let selectedFoodIndex = -1;
+        // const addParticipantBtn = document.getElementById("addParticipantBtn");
+        // addParticipantBtn.addEventListener("click", () => {
+        //     addParticipant();
+        // });
+
+        const addFoodBtn = document.getElementById("addFoodBtn");
+        addFoodBtn.addEventListener("click", () => {
+            addFood();
+        });
+
+        async function initDataFromFirebase() {
+            const foods = await getItemsFromDb("foods");
+            participants = await getItemsFromDb("participants");
+            participants = participants.map(p => ({...p, foods: foods.filter(f => f.participantId === p.id)}));
+            foodsWithoutParticipant = foods.filter(f => !f.participantId);
+            renderParticipantsPopup();
+            render();
+        }
+
+        async function getItemsFromDb(collectionName) {
+            const querySnapshot = await db.collection(collectionName).get()
+            const items = [];
+            querySnapshot.forEach((doc) => {
+                const item = doc.data();
+                items.push({...item, id : doc.id});
+            });
+            return items;
+        }
+
+        async function addItemInDb(collectionName, data) {
+            const docRef = await db.collection(collectionName).add(data);
+            console.log("Document written with ID: ", docRef.id);
+            console.log(docRef.id);
+            return docRef.id;
+        }
+
+        async function removeItemFromDB(collectionName, id) {
+            db.collection(collectionName).doc(id).delete().then(() => {
+                console.log("Document successfully deleted!");
+            }).catch((error) => {
+                console.error("Error removing document: ", error);
+            });
+        }
+
+        // async function addParticipant() {
+        //     const input = document.getElementById("participantInput");
+        //     const name = input.value.trim();
+        //     if (!name) return;           
+        //     const id = await addItemInDb("participants", {name});
+        //     participants.push({ name, foods: [], id});
+        //     input.value = "";
+        //     render();
+        // }
+ 
+        // function removeParticipant(index) {
+        //     const {id, foods} = participants[index];
+        //     console.log(id, foods);
+        //     participants.splice(index, 1);
+        //     removeItemFromDB("participants", id).then(() => {
+        //         const promises = foods.map(food => new Promise((resolve) => {
+        //             removeItemFromDB("foods", food.id).then(() => {
+        //                 resolve("ok");
+        //             });
+        //         }));
+        //         Promise.all(promises).then(res => {
+        //             render();
+        //         });
+        //     });
+        // }
+
+        async function addFood() {
+            const foodInput = document.getElementById("foodInput");
+            const food = foodInput.value.trim();
+            // const participantIndex = document.getElementById("participantSelect").value;
+
+            if (!food) return;
+            const newFood = {name: food, participantId: ""};
+            const id = await addItemInDb("foods", newFood);
+            const newFoodWithId = {...newFood, id};
+            
+            foodsWithoutParticipant.push(newFoodWithId)
+            
+            foodInput.value = "";
+            render();
+        }
+
+        async function attributeSelectedFoodToParticipant(participantId) {
+            const ref = db.collection("foods").doc(foodsWithoutParticipant[selectedFoodIndex].id);
+
+            const res = await ref.update({
+                participantId
+            });
+            return res;
+        }
+
+        function removeFood(participantIndex, foodIndex) {
+            let foodId;
+            if (participantIndex) {
+                const participant =  participants[participantIndex];
+                foodId = participant.foods[foodIndex].id
+                participant.foods.splice(foodIndex, 1);
+            } else {
+                foodId = foodsWithoutParticipant[selectedFoodIndex].id;
+                foodsWithoutParticipant.splice(foodIndex, 1);
+                participantsPopup.className = "hide";
+            }
+           
+            removeItemFromDB("foods", foodId).then(() => {
+                render();
+            });
+        }
+
+        function showParticipantsPopup() {
+            participantsPopup.className = "show";
+        }
+
+        function render() {
+            // Participants list
+            // const participantsList = document.getElementById("participantsList");
+            // participantsList.innerHTML = "";
+
+            // participants.forEach((p, i) => {
+            //     const li = document.createElement("li");
+            //     li.innerHTML = `
+            //         ${p.name}
+            //         <button>❌</button>
+            //     `;
+            //     li.querySelector("button").addEventListener("click", () => {
+            //         removeParticipant(i);
+            //     })
+            //     participantsList.appendChild(li);
+            // });
+
+            // Participant select
+            // const select = document.getElementById("participantSelect");
+            // select.innerHTML = `<option value="">-- Choisir --</option>`;
+            // participants.forEach((p, i) => {
+            //     const option = document.createElement("option");
+            //     option.value = i;
+            //     option.textContent = p.name;
+            //     select.appendChild(option);
+            // });
+            // const option = document.createElement("option");
+            // option.value = -1;
+            // option.textContent = "Personne pour l'instant";
+            // select.appendChild(option);
+
+            const foodsList = document.getElementById("foods-list");
+            foodsList.innerHTML = "";
+            foodsWithoutParticipant.forEach((food, fi) => {
+                 const li = document.createElement("li");
+                    li.innerHTML = `
+                    <button class="food-btn">
+                        ${food.name}
+                    </button>
+                    `;
+                    li.querySelector("button").addEventListener("click", () => {
+                        selectedFoodIndex = fi;
+                        showParticipantsPopup(fi);
+                    })
+                    foodsList.appendChild(li);
+            });
+
+            // Shopping lists
+            const shoppingLists = document.getElementById("shoppingLists");
+            shoppingLists.innerHTML = "";
+
+            participants.forEach((p, pi) => {
+                const div = document.createElement("div");
+                div.innerHTML = `<strong>${p.name}</strong>`;
+                const ul = document.createElement("ul");
+
+                p.foods.forEach((food, fi) => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `
+                        <span class="small">${food.name}</span>
+                        <button>❌</button>
+                    `;
+                    li.querySelector("button").addEventListener("click", () => {
+                        removeFood(pi, fi);
+                    })
+                    ul.appendChild(li);
+                });
+
+                div.appendChild(ul);
+                shoppingLists.appendChild(div);
+            });
+
+
+        }
+    
+        function renderParticipantsPopup() {
+            const participantsPopupUl = participantsPopup.querySelector("ul");
+            participantsPopupUl.querySelector("button").addEventListener("click", () => {
+                removeFood(null, selectedFoodIndex);
+            });
+            participants.forEach((participant) => {
+                const li = document.createElement("li");
+                li.innerHTML = `<button>
+                    ${participant.name}
+                </button>`;
+                li.querySelector("button").addEventListener("click", () => {
+                    attributeSelectedFoodToParticipant(participant.id).then(res => {
+                        const food = foodsWithoutParticipant[selectedFoodIndex];
+                        participant.foods.push(food);
+                        foodsWithoutParticipant.splice(selectedFoodIndex, 1);
+                        participantsPopup.className = "hide";
+                        render();
+                    })
+                });
+                participantsPopupUl.appendChild(li);
+            });
+            const li = document.createElement("li");
+            li.innerHTML = `<button>Annuler</button>`;
+            li.querySelector("button").addEventListener("click", () => {                   
+                participantsPopup.className = "hide";
+            });
+            participantsPopupUl.appendChild(li);
+        }
+
+        initDataFromFirebase();
+        
+    </script>
+
+</body>
+
+</html>
