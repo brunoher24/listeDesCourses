@@ -40,7 +40,7 @@
         li {
             padding: 5px;
             margin: 5px 0;
-            background: #eee;
+            background-color: #eee;
             border-radius: 5px;
             display: flex;
             justify-content: space-between;
@@ -57,6 +57,15 @@
             border: none;
             padding: 10px;
             border-radius: 40px;
+        }
+
+        #shoppingLists li {
+            cursor: pointer;
+        }
+
+        #shoppingLists li:hover, #shoppingLists li:active {
+            transition: background-color 300ms ease-in-out;
+            background-color: #c4c4c4;
         }
 
         #participants-popup {
@@ -191,6 +200,7 @@
         let foodsWithoutParticipant = [];
         const participantsPopup = document.querySelector("#participants-popup");
         let selectedFoodIndex = -1;
+        let selectedParticipantIndex = -1;
         // const addParticipantBtn = document.getElementById("addParticipantBtn");
         // addParticipantBtn.addEventListener("click", () => {
         //     addParticipant();
@@ -278,7 +288,8 @@
         }
 
         async function attributeSelectedFoodToParticipant(participantId) {
-            const ref = db.collection("foods").doc(foodsWithoutParticipant[selectedFoodIndex].id);
+            const food = selectedParticipantIndex > -1 ? participants[selectedParticipantIndex].foods[selectedFoodIndex] : foodsWithoutParticipant[selectedFoodIndex];
+            const ref = db.collection("foods").doc(food.id);
 
             const res = await ref.update({
                 participantId
@@ -286,24 +297,29 @@
             return res;
         }
 
-        function removeFood(participantIndex, foodIndex) {
+        function removeFood() {
             let foodId;
-            if (participantIndex) {
-                const participant =  participants[participantIndex];
-                foodId = participant.foods[foodIndex].id
-                participant.foods.splice(foodIndex, 1);
+            if (selectedParticipantIndex > -1) {
+                const participant =  participants[selectedParticipantIndex];
+                foodId = participant.foods[selectedFoodIndex].id
+                participant.foods.splice(selectedFoodIndex, 1);
+                selectedParticipantIndex = -1;
             } else {
                 foodId = foodsWithoutParticipant[selectedFoodIndex].id;
                 foodsWithoutParticipant.splice(foodIndex, 1);
-                participantsPopup.className = "hide";
             }
-           
+            
+            participantsPopup.className = "hide";
             removeItemFromDB("foods", foodId).then(() => {
                 render();
             });
         }
 
-        function showParticipantsPopup() {
+        function showParticipantsPopup(fi, pi) {
+            selectedFoodIndex = fi;
+            if(pi >= 0) {
+                selectedParticipantIndex = pi;
+            }
             participantsPopup.className = "show";
         }
 
@@ -348,7 +364,6 @@
                     </button>
                     `;
                     li.querySelector("button").addEventListener("click", () => {
-                        selectedFoodIndex = fi;
                         showParticipantsPopup(fi);
                     })
                     foodsList.appendChild(li);
@@ -367,10 +382,13 @@
                     const li = document.createElement("li");
                     li.innerHTML = `
                         <span class="small">${food.name}</span>
-                        <button>❌</button>
                     `;
-                    li.querySelector("button").addEventListener("click", () => {
-                        removeFood(pi, fi);
+                     // <button>❌</button>
+                    // li.querySelector("button").addEventListener("click", () => {
+                    //     removeFood(pi, fi);
+                    // })
+                    li.addEventListener("click", () => {
+                        showParticipantsPopup(fi, pi);
                     })
                     ul.appendChild(li);
                 });
@@ -385,7 +403,7 @@
         function renderParticipantsPopup() {
             const participantsPopupUl = participantsPopup.querySelector("ul");
             participantsPopupUl.querySelector("button").addEventListener("click", () => {
-                removeFood(null, selectedFoodIndex);
+                removeFood();
             });
             participants.forEach((participant) => {
                 const li = document.createElement("li");
@@ -394,9 +412,18 @@
                 </button>`;
                 li.querySelector("button").addEventListener("click", () => {
                     attributeSelectedFoodToParticipant(participant.id).then(res => {
-                        const food = foodsWithoutParticipant[selectedFoodIndex];
+                        let food;
+                        if(selectedParticipantIndex > -1) {
+                            const participant2 = participants[selectedParticipantIndex];
+                            food = {...participant2.foods[selectedFoodIndex]};
+                            participant2.foods.splice(selectedFoodIndex, 1);
+                            selectedParticipantIndex = -1;
+                        } else {
+                            food = {...foodsWithoutParticipant[selectedFoodIndex]};
+                            foodsWithoutParticipant.splice(selectedFoodIndex, 1);
+                        }
+                       
                         participant.foods.push(food);
-                        foodsWithoutParticipant.splice(selectedFoodIndex, 1);
                         participantsPopup.className = "hide";
                         render();
                     })
@@ -405,7 +432,8 @@
             });
             const li = document.createElement("li");
             li.innerHTML = `<button>Annuler</button>`;
-            li.querySelector("button").addEventListener("click", () => {                   
+            li.querySelector("button").addEventListener("click", () => {  
+                selectedParticipantIndex = -1;                 
                 participantsPopup.className = "hide";
             });
             participantsPopupUl.appendChild(li);
