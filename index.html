@@ -213,9 +213,10 @@
 
         async function initDataFromFirebase() {
             const foods = await getItemsFromDb("foods");
+            const sortedFoods = foods.sort((a,b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
             participants = await getItemsFromDb("participants");
-            participants = participants.map(p => ({...p, foods: foods.filter(f => f.participantId === p.id)}));
-            foodsWithoutParticipant = foods.filter(f => !f.participantId);
+            participants = participants.map(p => ({...p, foods: sortedFoods.filter(f => f.participantId === p.id)}));
+            foodsWithoutParticipant = sortedFoods.filter(f => !f.participantId);
             renderParticipantsPopup();
             render();
         }
