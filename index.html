@@ -59,6 +59,12 @@
             border-radius: 40px;
         }
 
+        #shoppingLists {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
         #shoppingLists li {
             cursor: pointer;
         }
@@ -145,13 +151,20 @@
             background: white;
             padding: 15px;
             border-radius: 8px;
-            width: 300px;
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            text-align: center;
         }
 
         .small {
             font-size: 0.9em;
             color: #555;
+        }
+
+        @media all and (max-width: 540px) {
+            #shoppingLists > div {
+                width: 100%
+            }
         }
     </style>
 </head>
@@ -168,17 +181,7 @@
             <input type="text" id="participantInput" placeholder="Nom du participant">
             <button id="addParticipantBtn">Ajouter</button>
             <ul id="participantsList"></ul>
-        </div> -->
-
-        <!-- Aliments -->
-        <div class="box">
-            <h2>Ajouter un aliment</h2>
-            <input type="text" id="foodInput" placeholder="Nom de l'aliment">
-            <!-- <select id="participantSelect"></select> -->
-            <button id="addFoodBtn">Ajouter</button>
-            <ul id="foods-list"></ul>
-        </div>
-        
+        </div> -->        
 
         <!-- Listes de courses -->
         <div class="box">
@@ -188,6 +191,15 @@
                 <button>🔍</button>
             </form>
             <div id="shoppingLists"></div>
+        </div>
+
+        <!-- Aliments -->
+        <div class="box">
+            <h2>Ajouter un aliment</h2>
+            <input type="text" id="foodInput" placeholder="Nom de l'aliment">
+            <!-- <select id="participantSelect"></select> -->
+            <button id="addFoodBtn">Ajouter</button>
+            <ul id="foods-list"></ul>
         </div>
 
         <div id="participants-popup" class="out-of-screen">
