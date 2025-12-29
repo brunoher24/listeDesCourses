@@ -103,6 +103,23 @@
             justify-content: center;
         }
 
+        #taken-btn-ctnr {
+            position: absolute;
+            top: 40px;
+            right: 16px;
+        }
+
+        #taken-btn-ctnr button {
+            border-radius: 20px;
+            background-color: #c4c4c4;
+        }
+
+        #taken-btn-ctnr button:hover,
+        #taken-btn-ctnr button:active {
+            transition: background-color 300ms ease-in-out;
+            background-color: #a9a8a8;   
+        }
+
         .out-of-screen {
             bottom: -100vh;
         }
@@ -175,6 +192,9 @@
 
         <div id="participants-popup" class="out-of-screen">
             <h2>Qui prend ?</h2>
+            <div id="taken-btn-ctnr">
+                <button>A prendre</button>
+            </div>
             <ul>
                 <li><button style="color:red">Supprimer</button></li>
             </ul>
@@ -203,6 +223,7 @@
         let participants = [];
         let foodsWithoutParticipant = [];
         const participantsPopup = document.querySelector("#participants-popup");
+        const takenBtn = document.querySelector("#taken-btn-ctnr button");
         let selectedFoodIndex = -1;
         let selectedParticipantIndex = -1;
         let foods = [];
@@ -210,6 +231,23 @@
         // addParticipantBtn.addEventListener("click", () => {
         //     addParticipant();
         // });
+
+        takenBtn.addEventListener("click", e => {
+            const participant = participants[selectedParticipantIndex];
+            const food = participant.foods[selectedFoodIndex];
+            const ref = db.collection("foods").doc(food.id);
+            ref.update({
+                taken: !food.taken
+            }).then(() => {
+                food.taken = !food.taken;
+                e.target.innerHTML = food.taken ? "Déja pris" : "A prendre";
+                participant.foods
+                .sort((a,b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+                .sort((a,b) => a.taken === b.taken ? 0 : a.taken ? -1 : 1);
+                console.log(participant.foods);
+                render();
+            });
+        })
 
         const addFoodBtn = document.getElementById("addFoodBtn");
         addFoodBtn.addEventListener("click", () => {
@@ -240,6 +278,7 @@
             foods = await getItemsFromDb("foods");
             foods = foods
             .sort((a,b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+            .sort((a,b) => a.taken === b.taken ? 0 : a.taken ? -1 : 1)
             .map((f, i) => ({...f, formatedName: f.name.toLowerCase(), i}));
             participants = await getItemsFromDb("participants");
             participants = participants.map(p => ({...p, foods: foods.filter(f => f.participantId === p.id)}));
@@ -298,14 +337,28 @@
         //         });
         //     });
         // }
-
+  // async function updateAllFoods() {
+        //     foods = await getItemsFromDb("foods");
+        //     const promises = foods.map(food => new Promise((resolve) => {
+        //         const ref = db.collection("foods").doc(food.id);
+        //         ref.update({taken: false}).then(res => {
+        //             console.log(res); 
+        //             resolve("ok") 
+        //         });
+        //     }));
+        //     Promise.all(promises).then(res => {
+        //         console.log("done !");
+        //     });
+        // }
+        // updateAllFoods();
+   
         async function addFood() {
             const foodInput = document.getElementById("foodInput");
             const food = foodInput.value.trim();
             // const participantIndex = document.getElementById("participantSelect").value;
 
             if (!food) return;
-            const newFood = {name: food, participantId: ""};
+            const newFood = {name: food, participantId: "", taken: false};
             const id = await addItemInDb("foods", newFood);
             const newFoodWithId = {...newFood, id};
             
@@ -343,12 +396,14 @@
             });
         }
 
-        function showParticipantsPopup(fi, pi) {
+        function showParticipantsPopup(fi, pi, foodIsTaken) {
             selectedFoodIndex = fi;
             if(pi >= 0) {
                 selectedParticipantIndex = pi;
             }
             participantsPopup.className = "show";
+            takenBtn.innerHTML = foodIsTaken ? "Déja pris" : "A prendre";
+
         }
 
         function render() {
@@ -392,7 +447,7 @@
                     </button>
                     `;
                     li.querySelector("button").addEventListener("click", () => {
-                        showParticipantsPopup(fi);
+                        showParticipantsPopup(fi, null, food.taken);
                     })
                     foodsList.appendChild(li);
             });
@@ -411,13 +466,14 @@
                     const li = document.createElement("li");
                     li.innerHTML = `
                         <span class="small">${food.name}</span>
+                        <span class="small">${food.taken ? "✓" : ""}</span>
                     `;
                      // <button>❌</button>
                     // li.querySelector("button").addEventListener("click", () => {
                     //     removeFood(pi, fi);
                     // })
                     li.addEventListener("click", () => {
-                        showParticipantsPopup(fi, pi);
+                        showParticipantsPopup(fi, pi, food.taken);
                     })
                     ul.appendChild(li);
                     li.dataset.y = li.getBoundingClientRect().y;
@@ -459,7 +515,7 @@
                 participantsPopupUl.appendChild(li);
             });
             const li = document.createElement("li");
-            li.innerHTML = `<button>Annuler</button>`;
+            li.innerHTML = `<button>Fermer</button>`;
             li.querySelector("button").addEventListener("click", () => {  
                 selectedParticipantIndex = -1;                 
                 participantsPopup.className = "hide";
@@ -468,8 +524,9 @@
         }
 
         initDataFromFirebase();
-        
-    </script>
+
+      
+   </script>
 
 </body>
 
