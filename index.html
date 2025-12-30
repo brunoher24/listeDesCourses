@@ -71,6 +71,7 @@
             position: relative;
             overflow: hidden;
             padding: 0;
+            margin: 4px 40px;
         }
 
         .food-clickable-zone {
@@ -600,6 +601,7 @@
                     //     removeFood(pi, fi);
                     // })
                     let startSwipeX = 0;
+                    let startSwipeY = 0;
                     let optionsAreVisible = false;
                     const foodClickableZone = li.querySelector(".food-clickable-zone");
                     const foodSwipableOptions = li.querySelector(".food-swipable-options");
@@ -623,22 +625,26 @@
                     li.addEventListener("touchstart", e => {
                         e.preventDefault();
                         startSwipeX = e.targetTouches[0]?.clientX;
+                        startSwipeY = e.targetTouches[0]?.clientY;
                     });
 
                     li.addEventListener("touchend", e => {
-                        if (!optionsAreVisible && startSwipeX - e.changedTouches[0]?.clientX > 30) {
+                        const changedTouch = e.changedTouches[0];
+                        if (!optionsAreVisible && startSwipeX - changedTouch?.clientX > 30) {
                             foodSwipableOptions.className = "food-swipable-options appear-right";
                             optionsAreVisible = true;
                             participantsPopup.className = "hide-bottom";
                             foodClickableZone.className = "food-clickable-zone width-minus-50px";
-                        } else if (optionsAreVisible && startSwipeX - e.changedTouches[0]?.clientX < -10) {
+                        } else if (optionsAreVisible && startSwipeX - changedTouch?.clientX < -10) {
                             foodSwipableOptions.className = "food-swipable-options disappear-right";
                             optionsAreVisible = false;
                             foodClickableZone.className = "food-clickable-zone full-width";
-                        } else if(startSwipeX - e.changedTouches[0]?.clientX < 10) {
-                            selectedParticipantIndex = pi;
-                            selectedFoodIndex = fi;
-                            switchFoodTakenState(foodTakenCheck);
+                        } else {
+                            if(startSwipeX - changedTouch?.clientX < 10 && startSwipeY - changedTouch?.clientY > -10 && startSwipeY - changedTouch?.clientY < 10) {
+                                selectedParticipantIndex = pi;
+                                selectedFoodIndex = fi;
+                                switchFoodTakenState(foodTakenCheck);
+                            }
                         }
                         // showParticipantsPopup(fi, pi, food.taken);
                     });
