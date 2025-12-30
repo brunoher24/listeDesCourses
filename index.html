@@ -623,10 +623,9 @@
                     });
 
                     li.addEventListener("touchstart", e => {
-                        e.preventDefault();
                         startSwipeX = e.targetTouches[0]?.clientX;
                         startSwipeY = e.targetTouches[0]?.clientY;
-                    });
+                    }, { passive: true });
 
                     li.addEventListener("touchend", e => {
                         const changedTouch = e.changedTouches[0];
