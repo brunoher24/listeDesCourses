@@ -83,7 +83,7 @@
         }
 
         .width-minus-50px {
-            width: calc(100% - 50px);
+            width: calc(100% - 88px);
         }
 
         #shoppingLists .food-swipable-options {
@@ -92,6 +92,7 @@
             bottom: 0;
             display: flex;
             align-items: stretch;
+            z-index: 1;
         }
 
         .appear-right {
@@ -101,13 +102,14 @@
 
         .disappear-right {
             transition : right 200ms linear;
-            right: -50px;
+            right: -88px;
         }
 
         #shoppingLists .food-swipable-options button {
             margin: 0;
             font-size: 12px;
             border: none;
+            padding: 6px 16px;
         }
 
         #shoppingLists .food-swipable-options .edit-btn{
@@ -215,7 +217,7 @@
         }
 
         .out-of-screen-right {
-            right: -50px;
+            right: -88px;
         }
 
         .show-bottom {
@@ -279,7 +281,15 @@
                 <button id="multi-select__ok-btn">Oui</button>
                 <button id="multi-select__cancel-btn">Non</button>
             </div>
-            
+        </div>
+
+         <!-- Aliments -->
+        <div class="box">
+            <h2>Ajouter un aliment</h2>
+            <input type="text" id="foodInput" placeholder="Nom de l'aliment">
+            <!-- <select id="participantSelect"></select> -->
+            <button id="addFoodBtn">Ajouter</button>
+            <ul id="foods-list"></ul>
         </div>
         
         <div class="box">
@@ -291,22 +301,13 @@
             <div id="shoppingLists"></div>
         </div>
 
-        <!-- Aliments -->
-        <div class="box">
-            <h2>Ajouter un aliment</h2>
-            <input type="text" id="foodInput" placeholder="Nom de l'aliment">
-            <!-- <select id="participantSelect"></select> -->
-            <button id="addFoodBtn">Ajouter</button>
-            <ul id="foods-list"></ul>
-        </div>
-
         <div id="participants-popup" class="out-of-screen-bottom">
             <h2>Qui prend ?</h2>
             <!-- <div id="taken-btn-ctnr">
                 <button>A prendre</button>
             </div> -->
             <ul>
-                <!-- <li><button style="color:red">Supprimer</button></li> -->
+                <li><button style="color:red">Supprimer</button></li>
             </ul>
         </div>
 
@@ -619,15 +620,16 @@
 
                     deleteBtn.addEventListener("touchend", e => {
                         selectedParticipantIndex = pi;
+                        selectedFoodIndex = fi;
                         removeFood();
                     });
 
-                    li.addEventListener("touchstart", e => {
+                    foodClickableZone.addEventListener("touchstart", e => {
                         startSwipeX = e.targetTouches[0]?.clientX;
                         startSwipeY = e.targetTouches[0]?.clientY;
                     }, { passive: true });
 
-                    li.addEventListener("touchend", e => {
+                    foodClickableZone.addEventListener("touchend", e => {
                         const changedTouch = e.changedTouches[0];
                         if (!optionsAreVisible && startSwipeX - changedTouch?.clientX > 30) {
                             foodSwipableOptions.className = "food-swipable-options appear-right";
@@ -656,9 +658,9 @@
     
         function renderParticipantsPopup() {
             const participantsPopupUl = participantsPopup.querySelector("ul");
-            // participantsPopupUl.querySelector("button").addEventListener("click", () => {
-            //     removeFood();
-            // });
+            participantsPopupUl.querySelector("button").addEventListener("click", () => {
+                removeFood();
+            });
             participants.forEach((participant) => {
                 const li = document.createElement("li");
                 li.innerHTML = `<button>
